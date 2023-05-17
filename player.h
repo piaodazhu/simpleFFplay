@@ -81,6 +81,13 @@ typedef struct {
     SDL_Renderer *renderer;
     SDL_Texture *texture;
     SDL_Rect rect;
+
+    int window_width;
+    int window_height;
+
+    int width;
+    int height;
+    double height_width_ratio;
 }   sdl_video_t;
 
 typedef struct packet_listnode {
@@ -163,13 +170,8 @@ typedef struct {
     int audio_write_buf_size;           // 当前音频帧中尚未拷入SDL音频缓冲区的数据量，audio_frm_size = audio_cp_index + audio_write_buf_size
     double audio_clock;
     int audio_clock_serial;
-    
-    int width;
-    int height;
-    double height_width_ratio;
 
     int abort_request;
-    int resize_request;
     int paused;
     int step;
 

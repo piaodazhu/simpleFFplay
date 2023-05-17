@@ -276,15 +276,15 @@ int player_running(const char *p_input_file)
         case SDL_WINDOWEVENT:
             switch (event.window.event) {
                 case SDL_WINDOWEVENT_SIZE_CHANGED:
-                    // screen_width  = cur_stream->width  = event.window.data1;
-                    // screen_height = cur_stream->height = event.window.data2;
-                    // if (cur_stream->vis_texture) {
-                    //     SDL_DestroyTexture(cur_stream->vis_texture);
-                    //     cur_stream->vis_texture = NULL;
-                    // }
-                    is->resize_request = 1;
-                    is->width = event.window.data1;
-                    is->height = event.window.data2;
+                    is->sdl_video.window_width = event.window.data1;
+                    is->sdl_video.window_height = event.window.data2;
+                    if (is->sdl_video.window_width * is->sdl_video.height_width_ratio < (double)is->sdl_video.window_height) {
+                        is->sdl_video.width = is->sdl_video.window_width;
+                        is->sdl_video.height = (int)(is->sdl_video.window_width * is->sdl_video.height_width_ratio);
+                    } else {
+                        is->sdl_video.height = is->sdl_video.window_height;
+                        is->sdl_video.width = (int)(is->sdl_video.window_height / is->sdl_video.height_width_ratio);
+                    }
                     av_log(NULL, AV_LOG_INFO, "SDL_WINDOWEVENT_SIZE_CHANGED\n");
             }
             break;

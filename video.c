@@ -215,43 +215,7 @@ static void video_display(player_stat_t *is)
     frame_t *vp;
 
     vp = frame_queue_peek_last(&is->video_frm_queue);
-
-    if (is->resize_request == 1) {
-        is->img_convert_ctx = sws_getCachedContext(
-                                is->img_convert_ctx,
-                                is->p_vcodec_ctx->width,   // src width
-                                is->p_vcodec_ctx->height,  // src height
-                                is->p_vcodec_ctx->pix_fmt, // src format
-                                is->width,   // dst width
-                                is->height,  // dst height
-                                AV_PIX_FMT_YUV420P,        // dst format
-                                SWS_BICUBIC,               // flags
-                                NULL,                      // src filter
-                                NULL,                      // dst filter
-                                NULL                       // param
-                                );
-        av_log(NULL, AV_LOG_INFO, "receive resize_request\n");
-        if (!is->img_convert_ctx) {
-            av_log(NULL, AV_LOG_INFO, "Cannot get cached conversion context\n");
-            is->img_convert_ctx = sws_getContext(
-                                    is->p_vcodec_ctx->width,   // src width
-                                    is->p_vcodec_ctx->height,  // src height
-                                    is->p_vcodec_ctx->pix_fmt, // src format
-                                    is->width,   // dst width
-                                    is->height,  // dst height
-                                    AV_PIX_FMT_YUV420P,        // dst format
-                                    SWS_BICUBIC,               // flags
-                                    NULL,                      // src filter
-                                    NULL,                      // dst filter
-                                    NULL                       // param
-                                    );
-            if (is->img_convert_ctx) {
-                av_log(NULL, AV_LOG_FATAL, "Cannot initialize the conversion context\n");
-                return;
-            }
-        }
-        is->resize_request = 0;
-    }
+    
     // 图像转换：p_frm_raw->data ==> p_frm_yuv->data
     // 将源图像中一片连续的区域经过处理后更新到目标图像对应区域，处理的图像区域必须逐行连续
     // plane: 如YUV有Y、U、V三个plane，RGB有R、G、B三个plane
@@ -259,7 +223,7 @@ static void video_display(player_stat_t *is)
     // stride/pitch: 一行图像所占的字节数，Stride=BytesPerPixel*Width+Padding，注意对齐
     // AVFrame.*data[]: 每个数组元素指向对应plane
     // AVFrame.linesize[]: 每个数组元素表示对应plane中一行图像所占的字节数
-    sws_scale(is->img_convert_ctx,                      // sws context
+    sws_scale(is->img_convert_ctx,                    // sws context
               (const uint8_t *const *)vp->frame->data,// src slice
               vp->frame->linesize,                    // src stride
               0,                                      // src slice y
@@ -268,9 +232,15 @@ static void video_display(player_stat_t *is)
               is->p_frm_yuv->linesize                 // dst strides
              );
     
-    // 使用新的YUV像素数据更新SDL_Rect
+    // 使用新的YUV像素数据更新Texture
+
+    is->sdl_video.rect.w = is->sdl_video.width;
+    is->sdl_video.rect.h = is->sdl_video.height;
+    is->sdl_video.rect.x = (is->sdl_video.window_width - is->sdl_video.width) /2;
+    is->sdl_video.rect.y = (is->sdl_video.window_height - is->sdl_video.height) /2;
+
     SDL_UpdateYUVTexture(is->sdl_video.texture,         // sdl texture
-                         &is->sdl_video.rect,           // sdl rect
+                         NULL,
                          is->p_frm_yuv->data[0],        // y plane
                          is->p_frm_yuv->linesize[0],    // y pitch
                          is->p_frm_yuv->data[1],        // u plane
@@ -278,10 +248,11 @@ static void video_display(player_stat_t *is)
                          is->p_frm_yuv->data[2],        // v plane
                          is->p_frm_yuv->linesize[2]     // v pitch
                         );
-    
+
     // 使用特定颜色清空当前渲染目标
     SDL_RenderClear(is->sdl_video.renderer);
-    // 使用部分图像数据(texture)更新当前渲染目标
+
+    // 将更新后的Texture拷贝到窗口的指定矩形区域(is->sdl_video.rect)
     SDL_RenderCopy(is->sdl_video.renderer,              // sdl renderer
                    is->sdl_video.texture,               // sdl texture
                    NULL,                                // src rect, if NULL copy texture
@@ -559,9 +530,9 @@ static int open_video_stream(player_stat_t *is)
     is->video_dec_tid = SDL_CreateThread(video_decode_thread, "video decode thread", is);
 
     // 3. record default display size
-    is->width = p_codec_par->width;
-    is->height = p_codec_par->height;
-    is->height_width_ratio = (double)(1.0 * is->height) / is->width;
+    is->sdl_video.width  = p_codec_par->width;
+    is->sdl_video.height = p_codec_par->height;
+    is->sdl_video.height_width_ratio = (double)(1.0 * is->sdl_video.height) / is->sdl_video.width;
     is->resize_request = 0;
 
     return 0;
