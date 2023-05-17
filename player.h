@@ -83,8 +83,13 @@ typedef struct {
     SDL_Rect rect;
 }   sdl_video_t;
 
+typedef struct packet_listnode {
+    AVPacket *pkt;
+    struct packet_listnode *next;
+} packet_listnode_t;
+
 typedef struct packet_queue_t {
-    AVPacketList *first_pkt, *last_pkt;
+    packet_listnode_t *first_pkt, *last_pkt;
     int nb_packets;                 // 队列中packet的数量
     int size;                       // 队列所占内存空间大小
     int64_t duration;               // 队列中所有packet总的播放时长
@@ -159,7 +164,12 @@ typedef struct {
     double audio_clock;
     int audio_clock_serial;
     
+    int width;
+    int height;
+    double height_width_ratio;
+
     int abort_request;
+    int resize_request;
     int paused;
     int step;
 

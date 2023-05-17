@@ -133,10 +133,12 @@ static player_stat_t *player_init(const char *p_input_file)
         goto fail;
     }
 
-    AVPacket flush_pkt;
-    flush_pkt.data = NULL;
-    packet_queue_put(&is->video_pkt_queue, &flush_pkt);
-    packet_queue_put(&is->audio_pkt_queue, &flush_pkt);
+    // AVPacket flush_pkt;
+    // flush_pkt.data = NULL;
+    // packet_queue_put(&is->video_pkt_queue, &flush_pkt);
+    // packet_queue_put(&is->audio_pkt_queue, &flush_pkt);
+    packet_queue_put_nullpacket(&is->video_pkt_queue, is->video_idx);
+    packet_queue_put_nullpacket(&is->audio_pkt_queue, is->audio_idx);
 
     if (!(is->continue_read_thread = SDL_CreateCond()))
     {
@@ -267,13 +269,25 @@ int player_running(const char *p_input_file)
             case SDLK_SPACE:        // 空格键：暂停
                 toggle_pause(is);
                 break;
-            case SDL_WINDOWEVENT:
-                break;
             default:
                 break;
             }
             break;
-
+        case SDL_WINDOWEVENT:
+            switch (event.window.event) {
+                case SDL_WINDOWEVENT_SIZE_CHANGED:
+                    // screen_width  = cur_stream->width  = event.window.data1;
+                    // screen_height = cur_stream->height = event.window.data2;
+                    // if (cur_stream->vis_texture) {
+                    //     SDL_DestroyTexture(cur_stream->vis_texture);
+                    //     cur_stream->vis_texture = NULL;
+                    // }
+                    is->resize_request = 1;
+                    is->width = event.window.data1;
+                    is->height = event.window.data2;
+                    av_log(NULL, AV_LOG_INFO, "SDL_WINDOWEVENT_SIZE_CHANGED\n");
+            }
+            break;
         case SDL_QUIT:
         case FF_QUIT_EVENT:
             do_exit(is);

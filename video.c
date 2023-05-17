@@ -216,6 +216,42 @@ static void video_display(player_stat_t *is)
 
     vp = frame_queue_peek_last(&is->video_frm_queue);
 
+    if (is->resize_request == 1) {
+        is->img_convert_ctx = sws_getCachedContext(
+                                is->img_convert_ctx,
+                                is->p_vcodec_ctx->width,   // src width
+                                is->p_vcodec_ctx->height,  // src height
+                                is->p_vcodec_ctx->pix_fmt, // src format
+                                is->width,   // dst width
+                                is->height,  // dst height
+                                AV_PIX_FMT_YUV420P,        // dst format
+                                SWS_BICUBIC,               // flags
+                                NULL,                      // src filter
+                                NULL,                      // dst filter
+                                NULL                       // param
+                                );
+        av_log(NULL, AV_LOG_INFO, "receive resize_request\n");
+        if (!is->img_convert_ctx) {
+            av_log(NULL, AV_LOG_INFO, "Cannot get cached conversion context\n");
+            is->img_convert_ctx = sws_getContext(
+                                    is->p_vcodec_ctx->width,   // src width
+                                    is->p_vcodec_ctx->height,  // src height
+                                    is->p_vcodec_ctx->pix_fmt, // src format
+                                    is->width,   // dst width
+                                    is->height,  // dst height
+                                    AV_PIX_FMT_YUV420P,        // dst format
+                                    SWS_BICUBIC,               // flags
+                                    NULL,                      // src filter
+                                    NULL,                      // dst filter
+                                    NULL                       // param
+                                    );
+            if (is->img_convert_ctx) {
+                av_log(NULL, AV_LOG_FATAL, "Cannot initialize the conversion context\n");
+                return;
+            }
+        }
+        is->resize_request = 0;
+    }
     // 图像转换：p_frm_raw->data ==> p_frm_yuv->data
     // 将源图像中一片连续的区域经过处理后更新到目标图像对应区域，处理的图像区域必须逐行连续
     // plane: 如YUV有Y、U、V三个plane，RGB有R、G、B三个plane
@@ -438,7 +474,7 @@ static int open_video_playing(void *arg)
                               SDL_WINDOWPOS_UNDEFINED,// 不关心窗口Y坐标
                               is->sdl_video.rect.w, 
                               is->sdl_video.rect.h,
-                              SDL_WINDOW_OPENGL
+                              SDL_WINDOW_OPENGL | SDL_WINDOW_MAXIMIZED | SDL_WINDOW_RESIZABLE
                               );
     if (is->sdl_video.window == NULL)
     {  
@@ -521,6 +557,12 @@ static int open_video_stream(player_stat_t *is)
     
     // 2. 创建视频解码线程
     is->video_dec_tid = SDL_CreateThread(video_decode_thread, "video decode thread", is);
+
+    // 3. record default display size
+    is->width = p_codec_par->width;
+    is->height = p_codec_par->height;
+    is->height_width_ratio = (double)(1.0 * is->height) / is->width;
+    is->resize_request = 0;
 
     return 0;
 }
