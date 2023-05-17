@@ -171,6 +171,12 @@ typedef struct {
     double audio_clock;
     int audio_clock_serial;
 
+    uint64_t start_time;
+
+    int seek_req;
+    int seek_pos;
+    int seek_rel;
+
     int abort_request;
     int paused;
     int step;

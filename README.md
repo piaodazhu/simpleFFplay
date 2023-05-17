@@ -15,6 +15,12 @@ A simpler ffplay based on FFmpeg4 and SDL2, aimed to be a better example for lea
 
 **Required FFmpeg version is 4.4.2, and required SDL2 version is 2.0.20. Other version may work but I haven't test them.**
 
+## Usage
+
+- `pause/unpause`: SPACE
+- `>> 10s | << 10s | >>> 60s | <<< 60s`: LEFT | RIGHT | UP | DOWN
+- `quit`: ESC
+
 ## References
 Some very useful materials (not too old) are recommended here:
 - [leandromoreira/ffmpeg-libav-tutorial](https://github.com/leandromoreira/ffmpeg-libav-tutorial)

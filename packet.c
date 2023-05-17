@@ -200,11 +200,13 @@ int packet_queue_get(packet_queue_t *q, AVPacket *pkt, int block)
 int packet_queue_put_nullpacket(packet_queue_t *q, int stream_index)
 {
     // just alloc in stack
-    AVPacket pkt;
-    pkt.data = NULL;
-    pkt.size = 0;
-    pkt.stream_index = stream_index;
-    return packet_queue_put(q, &pkt);
+    AVPacket *pkt = av_packet_alloc();
+    pkt->data = NULL;
+    pkt->size = 0;
+    pkt->stream_index = stream_index;
+    int ret = packet_queue_put(q, pkt);
+    av_packet_free(&pkt);
+    return ret;
 }
 
 void packet_queue_flush(packet_queue_t *q)

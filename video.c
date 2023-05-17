@@ -6,7 +6,6 @@
 static int queue_picture(player_stat_t *is, AVFrame *src_frame, double pts, double duration, int64_t pos)
 {
     frame_t *vp;
-
     if (!(vp = frame_queue_peek_writable(&is->video_frm_queue)))
         return -1;
 
@@ -23,7 +22,6 @@ static int queue_picture(player_stat_t *is, AVFrame *src_frame, double pts, doub
     //vp->serial = serial;
 
     //set_default_window_size(vp->width, vp->height, vp->sar);
-
     // 将AVFrame拷入队列相应位置
     av_frame_move_ref(vp->frame, src_frame);
     // 更新队列计数及写索引
@@ -47,7 +45,6 @@ static int video_decode_frame(AVCodecContext *p_codec_ctx, packet_queue_t *p_pkt
                 printf("video_decode_frame receive quit\n");
                 return -1;
             }
-            
             // 3. 从解码器接收frame
             // 3.1 一个视频packet含一个视频frame
             //     解码器缓存一定数量的packet后，才有解码后的frame输出
@@ -81,7 +78,6 @@ static int video_decode_frame(AVCodecContext *p_codec_ctx, packet_queue_t *p_pkt
                 return 1;   // 成功解码得到一个视频帧或一个音频帧，则返回
             }
         }
-
         // 1. 取出一个packet。使用pkt对应的serial赋值给d->pkt_serial
         if (packet_queue_get(p_pkt_queue, &pkt, true) < 0)
         {
@@ -269,7 +265,7 @@ static void video_refresh(void *opaque, double *remaining_time)
     player_stat_t *is = (player_stat_t *)opaque;
     double time;
     static bool first_frame = true;
-
+    // av_log(NULL, AV_LOG_INFO, "frame_time=%f, video=%f, audio=%f\n", is->frame_timer, is->video_clk.pts, is->audio_clk.pts);
 retry:
     if (frame_queue_nb_remaining(&is->video_frm_queue) == 0)  // 所有帧已显示
     {    
@@ -445,7 +441,7 @@ static int open_video_playing(void *arg)
                               SDL_WINDOWPOS_UNDEFINED,// 不关心窗口Y坐标
                               is->sdl_video.rect.w, 
                               is->sdl_video.rect.h,
-                              SDL_WINDOW_OPENGL | SDL_WINDOW_MAXIMIZED | SDL_WINDOW_RESIZABLE
+                              SDL_WINDOW_OPENGL | SDL_WINDOW_RESIZABLE
                               );
     if (is->sdl_video.window == NULL)
     {  
@@ -533,7 +529,8 @@ static int open_video_stream(player_stat_t *is)
     is->sdl_video.width  = p_codec_par->width;
     is->sdl_video.height = p_codec_par->height;
     is->sdl_video.height_width_ratio = (double)(1.0 * is->sdl_video.height) / is->sdl_video.width;
-
+    is->sdl_video.window_width = p_codec_par->width;
+    is->sdl_video.window_height = p_codec_par->height;
     return 0;
 }
 

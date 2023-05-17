@@ -83,11 +83,12 @@ frame_t *frame_queue_peek_writable(frame_queue_t *f)
 // 从队列头部读取一帧，只读取不删除，若无帧可读则等待
 frame_t *frame_queue_peek_readable(frame_queue_t *f)
 {
+    int signaled = 1;
     /* wait until we have a readable a new frame */
     SDL_LockMutex(f->mutex);
-    while (f->size - f->rindex_shown <= 0 &&
+    while (signaled && f->size - f->rindex_shown <= 0 &&
            !f->pktq->abort_request) {
-        SDL_CondWait(f->cond, f->mutex);
+        signaled = SDL_CondWaitTimeout(f->cond, f->mutex, 20);
     }
     SDL_UnlockMutex(f->mutex);
 

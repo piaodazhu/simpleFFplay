@@ -168,30 +168,16 @@ static int player_deinit(player_stat_t *is)
 {
     /* XXX: use a special url_shutdown call to abort parse cleanly */
     is->abort_request = 1;
-    SDL_WaitThread(is->read_tid, NULL);
-    printf("wait read_tid\n");
-    /* close each stream */
-    if (is->audio_idx >= 0)
-    {
-        //stream_component_close(is, is->p_audio_stream);
-    }
-    if (is->video_idx >= 0)
-    {
-        //stream_component_close(is, is->p_video_stream);
-    }
-
-    avformat_close_input(&is->p_fmt_ctx);
-
     packet_queue_abort(&is->video_pkt_queue);
     packet_queue_abort(&is->audio_pkt_queue);
-    printf("qb\n");
-    printf("start wait threads\n");
+    
+    SDL_WaitThread(is->read_tid, NULL);
+    avformat_close_input(&is->p_fmt_ctx);
+
+    
     SDL_WaitThread(is->audio_dec_tid, NULL);
-    printf("wait audio_dec_tid\n");
     SDL_WaitThread(is->video_dec_tid, NULL);
-    printf("wait video_dec_tid\n");
     SDL_WaitThread(is->video_ply_tid, NULL);
-    printf("wait video_ply_tid\n");
     
     packet_queue_destroy(&is->video_pkt_queue);
     packet_queue_destroy(&is->audio_pkt_queue);
@@ -230,6 +216,17 @@ static void toggle_pause(player_stat_t *is)
     is->step = 0;
 }
 
+/* seek in the stream */
+static void stream_seek(player_stat_t *is, int64_t pos, int64_t rel)
+{
+    if (!is->seek_req) {
+        is->seek_pos = pos;
+        is->seek_rel = rel;
+        is->seek_req = 1;
+        SDL_CondSignal(is->continue_read_thread);
+    }
+}
+
 int player_running(const char *p_input_file)
 {
     player_stat_t *is = NULL;
@@ -237,7 +234,6 @@ int player_running(const char *p_input_file)
     is = player_init(p_input_file);
     if (is == NULL)
     {
-        printf("player init failed\n");
         do_exit(is);
     }
 
@@ -246,6 +242,7 @@ int player_running(const char *p_input_file)
     open_audio(is);
 
     SDL_Event event;
+    double incr, pos;
 
     while (1)
     {
@@ -268,6 +265,24 @@ int player_running(const char *p_input_file)
             switch (event.key.keysym.sym) {
             case SDLK_SPACE:        // 空格键：暂停
                 toggle_pause(is);
+                break;
+            case SDLK_LEFT:
+                incr = -10.0;
+                goto do_seek;
+            case SDLK_RIGHT:
+                incr = 10.0;
+                goto do_seek;
+            case SDLK_UP:
+                incr = 60.0;
+                goto do_seek;
+            case SDLK_DOWN:
+                incr = -60.0;
+            do_seek:
+                    pos = is->audio_clk.pts;
+                    pos += incr;
+                    if (is->start_time != AV_NOPTS_VALUE && pos < is->start_time / (double)AV_TIME_BASE)
+                        pos = is->start_time / (double)AV_TIME_BASE;
+                    stream_seek(is, (int64_t)(pos * AV_TIME_BASE), (int64_t)(incr * AV_TIME_BASE));
                 break;
             default:
                 break;

@@ -111,6 +111,7 @@ static int demux_thread(void *arg)
     AVPacket pkt1, *pkt = &pkt1;
 
     SDL_mutex *wait_mutex = SDL_CreateMutex();
+    bool first_pack = true;
 
     printf("demux_thread running...\n");
 
@@ -123,6 +124,36 @@ static int demux_thread(void *arg)
             break;
         }
         
+        if (is->seek_req) {
+            int64_t seek_target = is->seek_pos;
+            int64_t seek_min    = is->seek_rel > 0 ? seek_target - is->seek_rel + 2: INT64_MIN;
+            int64_t seek_max    = is->seek_rel < 0 ? seek_target - is->seek_rel - 2: INT64_MAX;
+    // FIXME the +-2 is due to rounding being not done in the correct direction in generation
+    //      of the seek_pos/seek_rel variables
+
+            ret = avformat_seek_file(p_fmt_ctx, -1, seek_min, seek_target, seek_max, AVSEEK_FLAG_BACKWARD | AVSEEK_FLAG_FRAME);
+            if (ret < 0) {
+                av_log(NULL, AV_LOG_ERROR,
+                        "%s: error while seeking\n", is->filename);
+            } else {
+                if (is->audio_idx >= 0) {
+                    packet_queue_flush(&is->audio_pkt_queue);
+                    packet_queue_put_nullpacket(&is->audio_pkt_queue, is->audio_idx);
+                }
+                if (is->video_idx >= 0) {
+                    packet_queue_flush(&is->video_pkt_queue);
+                    packet_queue_put_nullpacket(&is->video_pkt_queue, is->video_idx);
+                }
+
+                set_clock(&is->audio_clk, seek_target / (double)AV_TIME_BASE, 0);
+                set_clock(&is->video_clk, seek_target / (double)AV_TIME_BASE, 0);
+            }
+            
+            is->seek_req = 0;
+            // if (is->paused)
+            //     step_to_next_frame(is);
+        }
+
         /* if the queue are full, no need to read more */
         if (is->audio_pkt_queue.size + is->video_pkt_queue.size > MAX_QUEUE_SIZE ||
             (stream_has_enough_packets(is->p_audio_stream, is->audio_idx, &is->audio_pkt_queue) &&
@@ -156,6 +187,11 @@ static int demux_thread(void *arg)
             SDL_CondWaitTimeout(is->continue_read_thread, wait_mutex, 10);
             SDL_UnlockMutex(wait_mutex);
             continue;
+        }
+
+        if (first_pack) {
+            is->start_time = is->p_fmt_ctx->streams[pkt->stream_index]->start_time;
+            first_pack = false;
         }
         
         // 4.3 根据当前packet类型(音频、视频、字幕)，将其存入对应的packet队列
