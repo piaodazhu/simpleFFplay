@@ -215,7 +215,7 @@ static void video_display(player_stat_t *is)
     frame_t *vp;
 
     vp = frame_queue_peek_last(&is->video_frm_queue);
-    
+
     // 图像转换：p_frm_raw->data ==> p_frm_yuv->data
     // 将源图像中一片连续的区域经过处理后更新到目标图像对应区域，处理的图像区域必须逐行连续
     // plane: 如YUV有Y、U、V三个plane，RGB有R、G、B三个plane
@@ -533,7 +533,6 @@ static int open_video_stream(player_stat_t *is)
     is->sdl_video.width  = p_codec_par->width;
     is->sdl_video.height = p_codec_par->height;
     is->sdl_video.height_width_ratio = (double)(1.0 * is->sdl_video.height) / is->sdl_video.width;
-    is->resize_request = 0;
 
     return 0;
 }
