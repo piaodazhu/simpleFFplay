@@ -1,4 +1,6 @@
 # simpleFFplay
+
+![play](./play.png)
 A simpler ffplay based on FFmpeg4 and SDL2, aimed to be a better example for learning media player than "How to Write a Video Player in Less Than 1000 Lines" and pockethook/player, etc. 
 
 **Problems in other player example:**
