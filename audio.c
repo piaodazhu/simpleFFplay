@@ -436,7 +436,8 @@ static void sdl_audio_callback(void *opaque, Uint8 *stream, int len)
         // 更新音频时钟，更新时刻：每次往声卡缓冲区拷入数据后
         // 前面audio_decode_frame中更新的is->audio_clock是以音频帧为单位，所以此处第二个参数要减去未拷贝数据量占用的时间
         set_clock_at(&is->audio_clk,
-            is->audio_clock - (double)(2 * is->audio_hw_buf_size + is->audio_write_buf_size) / is->audio_param_tgt.bytes_per_sec,
+            // is->audio_clock - (double)(2 * is->audio_hw_buf_size + is->audio_write_buf_size) / is->audio_param_tgt.bytes_per_sec,
+            is->audio_clock,  // piaodazhu: 暂时没看出上面的修正有什么道理
             is->audio_clock_serial,
             audio_callback_time / 1000000.0);
     }
@@ -457,6 +458,6 @@ int open_audio(player_stat_t *is)
     if (ret < 0) {
         return ret;
     }
-    
+
     return 0;
 }

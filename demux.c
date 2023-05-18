@@ -150,8 +150,8 @@ static int demux_thread(void *arg)
                     packet_queue_put_nullpacket(&is->video_pkt_queue, is->video_idx);
                 }
 
-                set_clock(&is->audio_clk, seek_target / (double)AV_TIME_BASE, 0);
-                set_clock(&is->video_clk, seek_target / (double)AV_TIME_BASE, 0);
+                // set_clock(&is->audio_clk, seek_target / (double)AV_TIME_BASE, 0);
+                // set_clock(&is->video_clk, seek_target / (double)AV_TIME_BASE, 0);
             }
             
             is->seek_req = 0;

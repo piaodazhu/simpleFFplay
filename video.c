@@ -293,6 +293,7 @@ retry:
     /* compute nominal last_duration */
     last_duration = vp_duration(is, lastvp, vp);        // 上一帧播放时长：vp->pts - lastvp->pts
     delay = compute_target_delay(last_duration, is);    // 根据视频时钟和同步时钟的差值，计算delay值
+    // av_log(NULL, AV_LOG_DEBUG, "%f,%f\n", last_duration, delay);
 
     time= av_gettime_relative()/1000000.0;
     // 当前帧播放时刻(is->frame_timer+delay)大于当前时刻(time)，表示播放时刻未到
@@ -314,6 +315,7 @@ retry:
     SDL_LockMutex(is->video_frm_queue.mutex);
     if (!isnan(vp->pts))
     {
+        // av_log(NULL, AV_LOG_DEBUG, "update ts from %f to %f\n", is->video_clk.pts, vp->pts);
         update_video_pts(is, vp->pts, vp->pos, vp->serial); // 更新视频时钟：时间戳、时钟时间
     }
     SDL_UnlockMutex(is->video_frm_queue.mutex);
