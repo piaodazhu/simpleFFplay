@@ -13,7 +13,7 @@ A simpler ffplay based on FFmpeg4 and SDL2, aimed to be a better example for lea
 
 `simpleFFplay` is an improved version of the `leichn/ffplayer`. They are all based on ffplay.c from FFmpeg.
 
-**Required FFmpeg version is 4.4.2, and required SDL2 version is 2.0.20. Other version may work but I haven't test them.**
+**Required FFmpeg version is 4.4.2, and required SDL2 version is 2.0.20. Test system is Ubuntu 22.04. Other environments may work but I haven't test them.**
 
 ## Usage
 

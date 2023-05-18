@@ -2,6 +2,7 @@
  * player.c
  *
  * history:
+ *   2023-05-18 - [piaodazhu]     Improve: progress bar
  *   2023-05-18 - [piaodazhu]     Fix: return value uncheck
  *   2023-05-18 - [piaodazhu]     Improve: better print message
  *   2023-05-17 - [piaodazhu]     Improve: support seek
@@ -231,6 +232,44 @@ static void stream_seek(player_stat_t *is, int64_t pos, int64_t rel)
     }
 }
 
+int time_str(double time, char *buf, int len) {
+    if (len <= strlen("hh:mm:ss.ff")) {
+        *buf = 0;
+        return -1;
+    }
+
+    double integer = floor(time);
+    double fractional = time - integer;
+    
+    int i = (int)integer;
+    int f = (int)(100 * fractional);
+    int hh = i / 3600;
+    i %= 3600;
+    int mm = i / 60;
+    i %= 60;
+    int ss = i;
+
+    return snprintf(buf, len, "%02d:%02d:%02d.%02d", hh, mm, ss, f);
+}
+
+int progress_bar(double time, double total, char *buf, int len) {
+    if (len <= 60) {
+        *buf = 0;
+        return -1;
+    }
+    int n = (int)ceil((time * 60) / total);
+    int idx = 0;
+    while (idx < n - 1) {
+        buf[idx++] = '=';
+    }
+    buf[idx++] = '>';
+    while (idx < 60) {
+        buf[idx++] = '.';
+    }
+    buf[idx++] = 0;
+    return 60;
+}
+
 int player_running(const char *p_input_file)
 {
     player_stat_t *is = NULL;
@@ -264,25 +303,27 @@ int player_running(const char *p_input_file)
     SDL_Event event;
     double incr, pos;
 
+    double duration, now;
+    duration = (double)is->p_fmt_ctx->duration / AV_TIME_BASE;
+
+    char totaltime[20], playtime[20], bar[80];
+    time_str(duration, totaltime, 20);
+    av_log(NULL, AV_LOG_INFO, "Control: \n\tquit:               <ESC>\n\tpause/unpause:      <SPACE>\n\tforward/backward:   <R/L/U/D>\n\n");
     while (1)
     {
         SDL_PumpEvents();
         // SDL event队列为空，则在while循环中播放视频帧。否则从队列头部取一个event，退出当前函数，在上级函数中处理event
         while (!SDL_PeepEvents(&event, 1, SDL_GETEVENT, SDL_FIRSTEVENT, SDL_LASTEVENT))
         {
-            double t = is->audio_clk.pts;
-            double integer = floor(t);
-            double fractional = t - integer;
-            
-            int i = (int)integer;
-            int f = (int)(100 * fractional);
-            int hh = i / 3600;
-            i %= 3600;
-            int mm = i / 60;
-            i %= 60;
-            int ss = i;
+            now = is->audio_clk.pts;
+            if (isnan(now)) {
+                now = 0.0;
+            }
 
-            av_log(NULL, AV_LOG_INFO, "- %02d:%02d:%02d.%02d -\t quit:<ESC> | pause/unpause: <SPACE> | >>/<< <R/L/U/D>\r", hh, mm, ss, f);
+            time_str(now, playtime, 20);
+            progress_bar(now, duration, bar, 80);
+
+            av_log(NULL, AV_LOG_INFO, "[%s/%s] (%s) \r", playtime, totaltime, bar);
 
             av_usleep(100000);
             SDL_PumpEvents();
