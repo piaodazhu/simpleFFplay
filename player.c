@@ -2,6 +2,14 @@
  * player.c
  *
  * history:
+ *   2023-05-18 - [piaodazhu]     Fix: return value uncheck
+ *   2023-05-18 - [piaodazhu]     Improve: better print message
+ *   2023-05-17 - [piaodazhu]     Improve: support seek
+ *   2023-05-17 - [piaodazhu]     Improve: support window resize
+ *   2023-05-17 - [piaodazhu]     Fix: audio cannot be paused
+ *   2023-05-16 - [piaodazhu]     Fix: cannot normally quit
+ *   2023-05-16 - [piaodazhu]     Fix: AVPacketList is deprecated
+ * 
  *   2018-11-27 - [lei]     Create file: a simplest ffmpeg player
  *   2018-12-01 - [lei]     Playing audio
  *   2018-12-06 - [lei]     Playing audio&vidio
@@ -100,7 +108,7 @@ static void do_exit(player_stat_t *is)
     avformat_network_deinit();
 
     SDL_Quit();
-
+    av_log(NULL, AV_LOG_INFO, "\nQUIT\n");
     exit(0);
 }
 
@@ -226,6 +234,7 @@ static void stream_seek(player_stat_t *is, int64_t pos, int64_t rel)
 int player_running(const char *p_input_file)
 {
     player_stat_t *is = NULL;
+    int ret;
 
     // 初始化队列，初始化SDL系统，分配player_stat_t结构体
     is = player_init(p_input_file);
@@ -235,13 +244,22 @@ int player_running(const char *p_input_file)
     }
 
     // 文件解封装
-    open_demux(is);
+    ret = open_demux(is);
+    if (ret < 0) {
+        do_exit(is);
+    }
 
     // 视频解码与播放
-    open_video(is);
+    ret = open_video(is);
+    if (ret < 0) {
+        do_exit(is);
+    }
 
     // 音频解码与播放
-    open_audio(is);
+    ret = open_audio(is);
+    if (ret < 0) {
+        do_exit(is);
+    }
 
     SDL_Event event;
     double incr, pos;

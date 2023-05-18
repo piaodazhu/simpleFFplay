@@ -31,6 +31,11 @@ static int demux_init(player_stat_t *is)
     err = avformat_open_input(&p_fmt_ctx, is->filename, NULL, NULL);
     if (err < 0)
     {
+        if (err == -2) {
+            av_log(NULL, AV_LOG_FATAL, "url %s not found\n", is->filename);
+            exit(0);
+        }
+        
         av_log(NULL, AV_LOG_FATAL, "avformat_open_input() failed %d\n", err);
         ret = -1;
         goto fail;

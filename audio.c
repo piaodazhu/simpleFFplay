@@ -444,11 +444,19 @@ static void sdl_audio_callback(void *opaque, Uint8 *stream, int len)
 
 int open_audio(player_stat_t *is)
 {
+    int ret;
+
     // 初始化音频解码器，创建音频解码线程
-    open_audio_stream(is);
+    ret = open_audio_stream(is);
+    if (ret < 0) {
+        return ret;
+    }
 
     // 打开音频播放设备，启动音频数据填充回调
-    open_audio_playing(is);
-
+    ret = open_audio_playing(is);
+    if (ret < 0) {
+        return ret;
+    }
+    
     return 0;
 }

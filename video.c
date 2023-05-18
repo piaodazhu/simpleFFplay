@@ -535,11 +535,16 @@ static int open_video_stream(player_stat_t *is)
 
 int open_video(player_stat_t *is)
 {
+    int ret;
     // 初始化视频解码器，启动视频解码线程
-    open_video_stream(is);
-    
+    ret = open_video_stream(is);
+    if (ret < 0) {
+        return ret;
+    }
     // 初始化图像转换上下文和渲染器，启动视频显示线程
-    open_video_playing(is);
-
+    ret = open_video_playing(is);
+    if (ret < 0) {
+        return ret;
+    }
     return 0;
 }
