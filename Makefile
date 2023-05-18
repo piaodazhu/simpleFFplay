@@ -2,7 +2,7 @@ CC=gcc
 SRCS=$(wildcard *.c */*.c)
 OBJS=$(patsubst %.c, %.o, $(SRCS))
 FLAG=-g
-LIB=-lavutil -lavformat -lavcodec -lavutil -lswscale -lswresample -lSDL2
+LIB=-lavutil -lavformat -lavcodec -lavutil -lswscale -lswresample -lSDL2 -lm
 NAME=$(wildcard *.c)
 TARGET=simpleFFplay
 

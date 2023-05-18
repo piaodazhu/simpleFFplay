@@ -17,7 +17,7 @@ static int demux_init(player_stat_t *is)
     p_fmt_ctx = avformat_alloc_context();
     if (!p_fmt_ctx)
     {
-        printf("Could not allocate context.\n");
+        av_log(NULL, AV_LOG_FATAL, "Could not allocate context.\n");
         ret = AVERROR(ENOMEM);
         goto fail;
     }
@@ -31,7 +31,7 @@ static int demux_init(player_stat_t *is)
     err = avformat_open_input(&p_fmt_ctx, is->filename, NULL, NULL);
     if (err < 0)
     {
-        printf("avformat_open_input() failed %d\n", err);
+        av_log(NULL, AV_LOG_FATAL, "avformat_open_input() failed %d\n", err);
         ret = -1;
         goto fail;
     }
@@ -42,7 +42,7 @@ static int demux_init(player_stat_t *is)
     err = avformat_find_stream_info(p_fmt_ctx, NULL);
     if (err < 0)
     {
-        printf("avformat_find_stream_info() failed %d\n", err);
+        av_log(NULL, AV_LOG_FATAL, "avformat_find_stream_info() failed %d\n", err);
         ret = -1;
         goto fail;
     }
@@ -56,13 +56,13 @@ static int demux_init(player_stat_t *is)
             (a_idx == -1))
         {
             a_idx = i;
-            printf("Find a audio stream, index %d\n", a_idx);
+            av_log(NULL, AV_LOG_DEBUG, "Find a audio stream, index %d\n", a_idx);
         }
         if ((p_fmt_ctx->streams[i]->codecpar->codec_type == AVMEDIA_TYPE_VIDEO) &&
             (v_idx == -1))
         {
             v_idx = i;
-            printf("Find a video stream, index %d\n", v_idx);
+            av_log(NULL, AV_LOG_DEBUG, "Find a video stream, index %d\n", v_idx);
         }
         if (a_idx != -1 && v_idx != -1)
         {
@@ -71,7 +71,7 @@ static int demux_init(player_stat_t *is)
     }
     if (a_idx == -1 && v_idx == -1)
     {
-        printf("Cann't find any audio/video stream\n");
+        av_log(NULL, AV_LOG_INFO, "Cann't find any audio/video stream\n");
         ret = -1;
  fail:
         if (p_fmt_ctx != NULL)
@@ -113,14 +113,14 @@ static int demux_thread(void *arg)
     SDL_mutex *wait_mutex = SDL_CreateMutex();
     bool first_pack = true;
 
-    printf("demux_thread running...\n");
+    av_log(NULL, AV_LOG_DEBUG, "demux_thread running...\n");
 
     // 4. 解复用处理
     while (1)
     {
         if (is->abort_request)
         {
-            printf("demux_thread thread receive quit\n");
+            av_log(NULL, AV_LOG_DEBUG, "demux_thread thread receive quit\n");
             break;
         }
         
@@ -226,16 +226,18 @@ static int demux_thread(void *arg)
 
 int open_demux(player_stat_t *is)
 {
+    // 打开、读取文件，获得音视频流信息
     if (demux_init(is) != 0)
     {
-        printf("demux_init() failed\n");
+        av_log(NULL, AV_LOG_FATAL, "demux_init() failed\n");
         return -1;
     }
 
+    // 解封装线程
     is->read_tid = SDL_CreateThread(demux_thread, "demux_thread", is);
     if (is->read_tid == NULL)
     {
-        printf("SDL_CreateThread() failed: %s\n", SDL_GetError());
+        av_log(NULL, AV_LOG_FATAL, "SDL_CreateThread() failed: %s\n", SDL_GetError());
         return -1;
     }
 

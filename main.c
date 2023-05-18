@@ -6,11 +6,9 @@ int main(int argc, char *argv[])
 {
     if (argc != 2)
     {
-        printf("Please provide a movie file, usage: \n");
-        printf("./simpleFFplay test.mp4\n");
+        av_log(NULL, AV_LOG_FATAL, "Please provide a movie file, usage: \n./simpleFFplay test.mp4\n");
         return -1;
     }
-    printf("Try playing %s ...\n", argv[1]);
     player_running(argv[1]);
 
     return 0;

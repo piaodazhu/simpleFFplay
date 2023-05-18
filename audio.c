@@ -16,10 +16,9 @@ static int audio_decode_frame(AVCodecContext *p_codec_ctx, packet_queue_t *p_pkt
         while (1)
         {
             if (p_pkt_queue->abort_request) {
-                printf("audio_decode_frame receive quit\n");
+                av_log(NULL, AV_LOG_DEBUG, "audio_decode_frame receive quit\n");
                 return -1;
-            }
-               
+            }  
 
             // 3.2 一个音频packet含一至多个音频frame，每次avcodec_receive_frame()返回一个frame，此函数返回。
             // 下次进来此函数，继续获取一个frame，直到avcodec_receive_frame()返回AVERROR(EAGAIN)，
@@ -310,7 +309,7 @@ static int audio_resample(player_stat_t *is, int64_t audio_callback_time)
 #ifdef DEBUG
     {
         static double last_clock;
-        printf("audio: delay=%0.3f clock=%0.3f clock0=%0.3f\n",
+        av_log(NULL, AV_LOG_DEBUG, "audio: delay=%0.3f clock=%0.3f clock0=%0.3f\n",
             is->audio_clock - last_clock,
             is->audio_clock, audio_clock0);
         last_clock = is->audio_clock;
@@ -445,7 +444,10 @@ static void sdl_audio_callback(void *opaque, Uint8 *stream, int len)
 
 int open_audio(player_stat_t *is)
 {
+    // 初始化音频解码器，创建音频解码线程
     open_audio_stream(is);
+
+    // 打开音频播放设备，启动音频数据填充回调
     open_audio_playing(is);
 
     return 0;

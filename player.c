@@ -133,10 +133,6 @@ static player_stat_t *player_init(const char *p_input_file)
         goto fail;
     }
 
-    // AVPacket flush_pkt;
-    // flush_pkt.data = NULL;
-    // packet_queue_put(&is->video_pkt_queue, &flush_pkt);
-    // packet_queue_put(&is->audio_pkt_queue, &flush_pkt);
     packet_queue_put_nullpacket(&is->video_pkt_queue, is->video_idx);
     packet_queue_put_nullpacket(&is->audio_pkt_queue, is->audio_idx);
 
@@ -231,14 +227,20 @@ int player_running(const char *p_input_file)
 {
     player_stat_t *is = NULL;
 
+    // 初始化队列，初始化SDL系统，分配player_stat_t结构体
     is = player_init(p_input_file);
     if (is == NULL)
     {
         do_exit(is);
     }
 
+    // 文件解封装
     open_demux(is);
+
+    // 视频解码与播放
     open_video(is);
+
+    // 音频解码与播放
     open_audio(is);
 
     SDL_Event event;
@@ -250,23 +252,37 @@ int player_running(const char *p_input_file)
         // SDL event队列为空，则在while循环中播放视频帧。否则从队列头部取一个event，退出当前函数，在上级函数中处理event
         while (!SDL_PeepEvents(&event, 1, SDL_GETEVENT, SDL_FIRSTEVENT, SDL_LASTEVENT))
         {
+            double t = is->audio_clk.pts;
+            double integer = floor(t);
+            double fractional = t - integer;
+            
+            int i = (int)integer;
+            int f = (int)(100 * fractional);
+            int hh = i / 3600;
+            i %= 3600;
+            int mm = i / 60;
+            i %= 60;
+            int ss = i;
+
+            av_log(NULL, AV_LOG_INFO, "- %02d:%02d:%02d.%02d -\t quit:<ESC> | pause/unpause: <SPACE> | >>/<< <R/L/U/D>\r", hh, mm, ss, f);
+
             av_usleep(100000);
             SDL_PumpEvents();
         }
 
         switch (event.type) {
         case SDL_KEYDOWN:
-            if (event.key.keysym.sym == SDLK_ESCAPE)
+            if (event.key.keysym.sym == SDLK_ESCAPE) // ESC: 退出
             {
                 do_exit(is);
                 break;
             }
 
             switch (event.key.keysym.sym) {
-            case SDLK_SPACE:        // 空格键：暂停
+            case SDLK_SPACE:        // 空格键: 暂停
                 toggle_pause(is);
                 break;
-            case SDLK_LEFT:
+            case SDLK_LEFT:         // 方向键: 快进快退
                 incr = -10.0;
                 goto do_seek;
             case SDLK_RIGHT:
@@ -289,6 +305,7 @@ int player_running(const char *p_input_file)
             }
             break;
         case SDL_WINDOWEVENT:
+            // 窗口大小伸缩 -> 画面适应
             switch (event.window.event) {
                 case SDL_WINDOWEVENT_SIZE_CHANGED:
                     is->sdl_video.window_width = event.window.data1;
@@ -300,7 +317,6 @@ int player_running(const char *p_input_file)
                         is->sdl_video.height = is->sdl_video.window_height;
                         is->sdl_video.width = (int)(is->sdl_video.window_height / is->sdl_video.height_width_ratio);
                     }
-                    av_log(NULL, AV_LOG_INFO, "SDL_WINDOWEVENT_SIZE_CHANGED\n");
             }
             break;
         case SDL_QUIT:

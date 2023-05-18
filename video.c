@@ -21,7 +21,6 @@ static int queue_picture(player_stat_t *is, AVFrame *src_frame, double pts, doub
     vp->pos = pos;
     //vp->serial = serial;
 
-    //set_default_window_size(vp->width, vp->height, vp->sar);
     // 将AVFrame拷入队列相应位置
     av_frame_move_ref(vp->frame, src_frame);
     // 更新队列计数及写索引
@@ -42,7 +41,7 @@ static int video_decode_frame(AVCodecContext *p_codec_ctx, packet_queue_t *p_pkt
         while (1)
         {
             if (p_pkt_queue->abort_request) {
-                printf("video_decode_frame receive quit\n");
+                av_log(NULL, AV_LOG_DEBUG, "video_decode_frame receive quit\n");
                 return -1;
             }
             // 3. 从解码器接收frame
@@ -81,7 +80,7 @@ static int video_decode_frame(AVCodecContext *p_codec_ctx, packet_queue_t *p_pkt
         // 1. 取出一个packet。使用pkt对应的serial赋值给d->pkt_serial
         if (packet_queue_get(p_pkt_queue, &pkt, true) < 0)
         {
-            printf("get packet error\n");
+            av_log(NULL, AV_LOG_DEBUG, "get packet error\n");
             return -1;
         }
 
@@ -355,7 +354,7 @@ static int video_playing_thread(void *arg)
         video_refresh(is, &remaining_time);
         
         if (is->abort_request) {
-            printf("playing thread receive quit\n");
+            av_log(NULL, AV_LOG_DEBUG, "playing thread receive quit\n");
             break;
         }
     }
@@ -373,7 +372,7 @@ static int open_video_playing(void *arg)
     is->p_frm_yuv = av_frame_alloc();
     if (is->p_frm_yuv == NULL)
     {
-        printf("av_frame_alloc() for p_frm_raw failed\n");
+        av_log(NULL, AV_LOG_FATAL, "av_frame_alloc() for p_frm_raw failed\n");
         return -1;
     }
 
@@ -387,7 +386,7 @@ static int open_video_playing(void *arg)
     buffer = (uint8_t *)av_malloc(buf_size);
     if (buffer == NULL)
     {
-        printf("av_malloc() for buffer failed\n");
+        av_log(NULL, AV_LOG_FATAL, "av_malloc() for buffer failed\n");
         return -1;
     }
     // 使用给定参数设定p_frm_yuv->data和p_frm_yuv->linesize
@@ -401,7 +400,7 @@ static int open_video_playing(void *arg)
                                );
     if (ret < 0)
     {
-        printf("av_image_fill_arrays() failed %d\n", ret);
+        av_log(NULL, AV_LOG_FATAL, "av_image_fill_arrays() failed %d\n", ret);
         return -1;;
     }
 
@@ -424,7 +423,7 @@ static int open_video_playing(void *arg)
                                          );
     if (is->img_convert_ctx == NULL)
     {
-        printf("sws_getContext() failed\n");
+        av_log(NULL, AV_LOG_FATAL, "sws_getContext() failed\n");
         return -1;
     }
 
@@ -445,7 +444,7 @@ static int open_video_playing(void *arg)
                               );
     if (is->sdl_video.window == NULL)
     {  
-        printf("SDL_CreateWindow() failed: %s\n", SDL_GetError());  
+        av_log(NULL, AV_LOG_FATAL, "SDL_CreateWindow() failed: %s\n", SDL_GetError());  
         return -1;
     }
 
@@ -454,7 +453,7 @@ static int open_video_playing(void *arg)
     is->sdl_video.renderer = SDL_CreateRenderer(is->sdl_video.window, -1, 0);
     if (is->sdl_video.renderer == NULL)
     {  
-        printf("SDL_CreateRenderer() failed: %s\n", SDL_GetError());  
+        av_log(NULL, AV_LOG_FATAL, "SDL_CreateRenderer() failed: %s\n", SDL_GetError());  
         return -1;
     }
 
@@ -468,7 +467,7 @@ static int open_video_playing(void *arg)
                                     );
     if (is->sdl_video.texture == NULL)
     {  
-        printf("SDL_CreateTexture() failed: %s\n", SDL_GetError());  
+        av_log(NULL, AV_LOG_FATAL, "SDL_CreateTexture() failed: %s\n", SDL_GetError());  
         return -1;
     }
 
@@ -493,7 +492,7 @@ static int open_video_stream(player_stat_t *is)
     p_codec = avcodec_find_decoder(p_codec_par->codec_id);
     if (p_codec == NULL)
     {
-        printf("Cann't find codec!\n");
+        av_log(NULL, AV_LOG_FATAL, "Cann't find codec!\n");
         return -1;
     }
 
@@ -502,21 +501,21 @@ static int open_video_stream(player_stat_t *is)
     p_codec_ctx = avcodec_alloc_context3(p_codec);
     if (p_codec_ctx == NULL)
     {
-        printf("avcodec_alloc_context3() failed\n");
+        av_log(NULL, AV_LOG_FATAL, "avcodec_alloc_context3() failed\n");
         return -1;
     }
     // 1.3.2 p_codec_ctx初始化：p_codec_par ==> p_codec_ctx，初始化相应成员
     ret = avcodec_parameters_to_context(p_codec_ctx, p_codec_par);
     if (ret < 0)
     {
-        printf("avcodec_parameters_to_context() failed\n");
+        av_log(NULL, AV_LOG_FATAL, "avcodec_parameters_to_context() failed\n");
         return -1;
     }
     // 1.3.3 p_codec_ctx初始化：使用p_codec初始化p_codec_ctx，初始化完成
     ret = avcodec_open2(p_codec_ctx, p_codec, NULL);
     if (ret < 0)
     {
-        printf("avcodec_open2() failed %d\n", ret);
+        av_log(NULL, AV_LOG_FATAL, "avcodec_open2() failed %d\n", ret);
         return -1;
     }
 
@@ -536,7 +535,10 @@ static int open_video_stream(player_stat_t *is)
 
 int open_video(player_stat_t *is)
 {
+    // 初始化视频解码器，启动视频解码线程
     open_video_stream(is);
+    
+    // 初始化图像转换上下文和渲染器，启动视频显示线程
     open_video_playing(is);
 
     return 0;

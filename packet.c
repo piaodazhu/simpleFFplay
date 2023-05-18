@@ -6,13 +6,13 @@ int packet_queue_init(packet_queue_t *q)
     q->mutex = SDL_CreateMutex();
     if (!q->mutex)
     {
-        printf("SDL_CreateMutex(): %s\n", SDL_GetError());
+        av_log(NULL, AV_LOG_FATAL, "SDL_CreateMutex(): %s\n", SDL_GetError());
         return AVERROR(ENOMEM);
     }
     q->cond = SDL_CreateCond();
     if (!q->cond)
     {
-        printf("SDL_CreateCond(): %s\n", SDL_GetError());
+        av_log(NULL, AV_LOG_FATAL, "SDL_CreateCond(): %s\n", SDL_GetError());
         return AVERROR(ENOMEM);
     }
     q->abort_request = 0;
@@ -24,12 +24,7 @@ int packet_queue_init(packet_queue_t *q)
 int packet_queue_put(packet_queue_t *q, AVPacket *pkt)
 {
     packet_listnode_t *pkt_listnode;
-    
-    // if (av_packet_make_refcounted(pkt) < 0)
-    // {
-    //     printf("[pkt] is not refrence counted\n");
-    //     return -1;
-    // }
+
     pkt_listnode = av_malloc(sizeof(packet_listnode_t));
     if (!pkt_listnode)
     {
@@ -64,44 +59,6 @@ int packet_queue_put(packet_queue_t *q, AVPacket *pkt)
     SDL_UnlockMutex(q->mutex);
     return 0;
 }
-
-// int packet_queue_put(packet_queue_t *q, AVPacket *pkt)
-// {
-//     AVPacketList *pkt_list;
-    
-//     if (av_packet_make_refcounted(pkt) < 0)
-//     {
-//         printf("[pkt] is not refrence counted\n");
-//         return -1;
-//     }
-//     pkt_list = av_malloc(sizeof(AVPacketList));
-//     if (!pkt_list)
-//     {
-//         return -1;
-//     }
-    
-//     pkt_list->pkt = *pkt;
-//     pkt_list->next = NULL;
-
-//     SDL_LockMutex(q->mutex);
-
-//     if (!q->last_pkt)   // 队列为空
-//     {
-//         q->first_pkt = pkt_list;
-//     }
-//     else
-//     {
-//         q->last_pkt->next = pkt_list;
-//     }
-//     q->last_pkt = pkt_list;
-//     q->nb_packets++;
-//     q->size += pkt_list->pkt.size;
-//     // 发个条件变量的信号：重启等待q->cond条件变量的一个线程
-//     SDL_CondSignal(q->cond);
-
-//     SDL_UnlockMutex(q->mutex);
-//     return 0;
-// }
 
 // 读队列头部。
 int packet_queue_get(packet_queue_t *q, AVPacket *pkt, int block)
@@ -150,52 +107,6 @@ int packet_queue_get(packet_queue_t *q, AVPacket *pkt, int block)
     SDL_UnlockMutex(q->mutex);
     return ret;
 }
-
-// int packet_queue_get(packet_queue_t *q, AVPacket *pkt, int block)
-// {
-//     AVPacketList *p_pkt_node;
-//     int ret;
-
-//     SDL_LockMutex(q->mutex);
-
-//     while (1)
-//     {
-//         p_pkt_node = q->first_pkt;
-//         if (p_pkt_node)             // 队列非空，取一个出来
-//         {
-//             q->first_pkt = p_pkt_node->next;
-//             if (!q->first_pkt)
-//             {
-//                 q->last_pkt = NULL;
-//             }
-//             q->nb_packets--;
-//             q->size -= p_pkt_node->pkt.size;
-//             *pkt = p_pkt_node->pkt;
-//             av_free(p_pkt_node);
-//             ret = 1;
-//             break;
-//         }
-//         else if (!block)            // 队列空且阻塞标志无效，则立即退出
-//         {
-//             ret = 0;
-//             break;
-//         }
-//         else                        // 队列空且阻塞标志有效，则等待
-//         {
-//             // SDL_CondWait(q->cond, q->mutex);
-//             int signaled = 1;
-//             while (signaled && !q->abort_request) {
-//                 signaled = SDL_CondWaitTimeout(q->cond, q->mutex, 20);
-//             }
-//             if (q->abort_request) {
-//                 SDL_UnlockMutex(q->mutex);
-//                 return -1;
-//             }
-//         }
-//     }
-//     SDL_UnlockMutex(q->mutex);
-//     return ret;
-// }
 
 int packet_queue_put_nullpacket(packet_queue_t *q, int stream_index)
 {

@@ -11,6 +11,7 @@
 #include <libswresample/swresample.h>
 #include <libavutil/frame.h>
 #include <libavutil/time.h>
+#include <libavutil/mathematics.h>
 #include <libavutil/imgutils.h>
 #if defined(_WIN32)
 #include <SDL.h>
